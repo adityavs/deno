@@ -260,6 +260,20 @@ fn test_source_code_hash() {
   );
 }
 
+// The `add_root` macro prepends "C:" to a string if on windows; on posix
+// systems it returns the input string untouched. This is necessary because
+// `Url::from_file_path()` fails if the input path isn't an absolute path.
+#[cfg(test)]
+macro_rules! add_root {
+  ($path:expr) => {
+    if cfg!(target_os = "windows") {
+      concat!("C:", $path)
+    } else {
+      $path
+    }
+  };
+}
+
 #[test]
 fn test_code_fetch() {
   let (_temp_dir, deno_dir) = test_setup();
@@ -269,7 +283,7 @@ fn test_code_fetch() {
 
   // Test failure case.
   let module_specifier = "hello.ts";
-  let containing_file = "/baddir/badfile.ts";
+  let containing_file = add_root!("/baddir/badfile.ts");
   let r = deno_dir.code_fetch(module_specifier, containing_file);
   assert!(r.is_err());
 
@@ -295,19 +309,6 @@ fn test_src_file_to_url() {
 #[test]
 fn test_resolve_module() {
   let (_temp_dir, deno_dir) = test_setup();
-
-  // The `add_root` macro prepends "C:" to a string if on windows; on posix
-  // systems it returns the input string untouched. This is necessary because
-  // `Url::from_file_path()` fails if the input path isn't an absolute path.
-  macro_rules! add_root {
-    ($path:expr) => {
-      if cfg!(target_os = "windows") {
-        concat!("C:", $path)
-      } else {
-        $path
-      }
-    };
-  }
 
   let test_cases = [
     (
