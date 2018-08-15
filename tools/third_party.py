@@ -20,6 +20,8 @@ def tp(*subpath_parts):
 third_party_path = tp()
 depot_tools_path = tp("depot_tools")
 rust_crates_path = tp("rust_crates")
+gn_path = tp(depot_tools_path, "gn")
+ninja_path = tp(depot_tools_path, "ninja")
 
 
 # This function creates or modifies an environment so that it matches the
@@ -45,7 +47,6 @@ def fix_symlinks():
 
     # Make symlinks to Yarn metadata living in the root repo.
     remove_and_symlink("../package.json", tp("package.json"))
-    remove_and_symlink("../yarn.lock", tp("yarn.lock"))
 
     # TODO(ry) Is it possible to remove these symlinks?
     remove_and_symlink("v8/third_party/googletest", tp("googletest"), True)
@@ -62,11 +63,13 @@ def fix_symlinks():
     remove_and_symlink("third_party/v8/build_overrides",
                        root("build_overrides"), True)
     remove_and_symlink("third_party/v8/testing", root("testing"), True)
+    remove_and_symlink("../third_party/v8/tools/clang", root("tools/clang"),
+                       True)
 
 
 # Run Yarn to install JavaScript dependencies.
 def run_yarn():
-    run(["yarn"], cwd=third_party_path)
+    run(["yarn", "--no-lockfile"], cwd=third_party_path)
 
 
 # Run Cargo to install Rust dependencies.
@@ -164,3 +167,13 @@ def download_clang():
     run(['python',
          tp('v8/tools/clang/scripts/update.py'), '--if-needed'],
         env=google_env())
+
+
+def maybe_download_sysroot():
+    if sys.platform.startswith('linux'):
+        run([
+            'python',
+            tp('v8/build/linux/sysroot_scripts/install-sysroot.py'),
+            '--arch=amd64'
+        ],
+            env=google_env())

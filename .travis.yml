@@ -5,39 +5,38 @@ branches:
 cache:
   ccache: true
   directories:
-   - $DEPOT_TOOLS_PATH
-   - $BUILD_PATH
+   - $CARGO_PATH
+   - $RUSTUP_PATH
+   - third_party/v8/build/linux/debian_sid_amd64-sysroot/
+   - third_party/v8/third_party/llvm-build/
 env:
   global:
-    - BUILD_PATH=$HOME/out/Default
-    - DEPOT_TOOLS_PATH=$HOME/depot_tools
+    - CARGO_PATH=$HOME/.cargo/
+    - RUSTUP_PATH=$HOME/.rustup/
+    # is_debug, use_allocator, and ccache are used to speed travis.
+    # use_custom_libcxx=false and use_sysroot=false seem to be required to build on
+    # Ubuntu 14.04
+    # Help: How do you wrap long lines here?
+    - DENO_BUILD_ARGS="is_debug=false use_allocator=\"none\" use_custom_libcxx=false use_sysroot=false"
+    - DENO_BUILD_PATH=$HOME/out/Default
+    - DENO_BUILD_MODE=debug
 before_install: |
-  if ! [ -x $DEPOT_TOOLS_PATH/gclient ]; then
-    rm -rf $DEPOT_TOOLS_PATH
-    git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git $DEPOT_TOOLS_PATH
+  # Install Rust.
+  # TODO(ry) Include rustc in third_party https://github.com/denoland/deno/issues/386
+  export PATH=$CARGO_PATH/bin:$PATH
+  rustc --version
+  if [ $? != 0 ]; then
+    curl -sSf https://sh.rustup.rs | sh -s -- -y
   fi
 install:
- - export PATH=$PATH:$DEPOT_TOOLS_PATH
- # Sync dependencies.
- # TODO(ry) These sync steps are very terrible and only here temporarily.
- # rustc should be added to deno_third_party. Ultimately Deno *should not*
- # depend on yarn, gclient, rustup, cargo, nor any internet connection.
- - curl -sSf https://sh.rustup.rs | sh -s -- -y
- - export PATH=$HOME/.cargo/bin:$PATH
- - rustc --version
- # TODO(ry) Do not depend on run_hooks because it calls
- # //third_party/depot_tools/download_from_google_storage.py
- # Use git lfs and combine run_hooks with sync_third_party?
- - ./tools/run_hooks.py
  # ccache needs the custom LLVM to be in PATH and other variables.
  - export PATH=`pwd`/third_party/llvm-build/Release+Asserts/bin:$PATH
  - export CCACHE_CPP2=yes
  - export CCACHE_SLOPPINESS=time_macros
  - ccache -s
- # is_debug, use_allocator, and ccache are used to speed travis.
- # use_custom_libcxx=false and use_sysroot=false seem to be required to build on
- # Ubuntu 14.04
- - ./tools/build.py --build_path=$BUILD_PATH --args='is_debug=false use_allocator="none" use_custom_libcxx=false use_sysroot=false'
+ - ./tools/setup.py
+ # Travis hangs without -j2 argument to ninja.
+ - ./tools/build.py -j2
 script:
  - ./tools/lint.py
- - ./tools/test.py $BUILD_PATH
+ - ./tools/test.py $DENO_BUILD_PATH

@@ -1,6 +1,6 @@
 import("//build_extra/rust/rust.gni")
 
-# TODO(ry) "flatbuffer.gni" should be "flatbuffers.gni" we should be consistant
+# TODO(ry) "flatbuffer.gni" should be "flatbuffers.gni" we should be consistent
 # in our pluralization.
 import("//build_extra/flatbuffers/flatbuffer.gni")
 
@@ -33,7 +33,7 @@ template("rust_flatbuffer") {
     }
   }
 
-  rust_component(source_set_name) {
+  rust_crate(source_set_name) {
     sources = get_target_outputs(":$action_name")
     source_root = sources[0]
     deps = [
